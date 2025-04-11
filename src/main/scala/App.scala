@@ -1,8 +1,7 @@
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types._
 import org.apache.spark.SparkConf
-import com.datastax.spark.connector._
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.cassandra.DataFrameWriterWrapper
+import org.apache.spark.sql.types._
 
 object App {
   def main(args: Array[String]): Unit = {
