@@ -16,3 +16,5 @@ libraryDependencies += "org.apache.spark" %% "spark-core" % sparkVersion
 libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion % "provided"
 // https://mvnrepository.com/artifact/org.apache.spark/spark-streaming
 libraryDependencies += "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided"
+// https://mvnrepository.com/artifact/com.datastax.spark/spark-cassandra-connector
+libraryDependencies += "com.datastax.spark" %% "spark-cassandra-connector" % "2.4.3"
