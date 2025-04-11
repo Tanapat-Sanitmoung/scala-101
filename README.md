@@ -7,7 +7,7 @@
 ## LINKS
 - [Scala Docs](https://archive.apache.org/dist/spark/docs/2.4.0/api/scala/index.html)
 - [Spark Docs](https://archive.apache.org/dist/spark/docs/2.4.0/sql-data-sources.html)
-
+- [DataFrame API](https://docs.datastax.com/en/dse/6.9/spark/data-frames.html)
 ## OUTPUT
 
 Insert successfully
