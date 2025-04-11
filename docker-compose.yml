@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  dse-server:
+    image: datastax/dse-server:6.8.37
+    container_name: dse-server
+    ports:
+      - "9042:9042" # Cassandra Query Language (CQL) port
+      - "8000:8000" # OpsCenter port
+      - "8080:8080" # Application port
+    environment:
+      - DS_LICENSE=accept # Accept DataStax license agreement
+    volumes:
+      - ./data:/var/lib/cassandra # Persistent data storage
+    networks:
+      - dse-network
+
+networks:
+  dse-network:
+    driver: bridge
