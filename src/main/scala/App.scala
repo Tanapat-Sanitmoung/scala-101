@@ -24,14 +24,20 @@ object App {
       .add("annual_income_k", IntegerType)
       .add("spending_score", IntegerType)
 
-    val streamDf = session.read
+    val df = session.read
       .option("header", value = true)
       .schema(mallCustomerSchema)
       .csv(csvFile)
 
-    streamDf.show(numRows =  5)
+    df.show(numRows =  5)
 
-    streamDf.write
+    val partition1 = df.rdd.getNumPartitions.toInt
+    df.rdd.repartition(2)
+    val partition2 = df.rdd.getNumPartitions.toInt
+    println(s"P1 = $partition1, P2 = $partition2")
+    // P1 = 1, P2 = 1
+
+    df.write
       .cassandraFormat(table = "customer_data", keyspace = "poc")
       .save()
 

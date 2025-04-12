@@ -1,5 +1,7 @@
 # NOTE
 
+This is just for run on development machine, read csv file and write to Cassandra container.
+
 1. run `podman compose -f docker-compose.yml -p poc up -d`. to populate dse-node (Cassandra). ** change image Tag to match with your machine
 2. execute `create-table.cql` by which method is good for you.
 3. run `App`
