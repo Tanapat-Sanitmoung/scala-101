@@ -17,8 +17,7 @@ object App {
     = {
       list match {
         case Nil => map
-        case (cmd @ ("--csv-file" | "--schema-file" | "--contains-header" | "--spark-master"
-          | "--cassandra-host-ip" | "--cassandra-host-port"))
+        case (cmd @ ("--csv-file" | "--csv-config"))
           :: value :: tail => mapArgs(map ++ Map(cmd -> value), tail)
         case unknown :: _ =>
           println(s"Unknown command argument := $unknown")
@@ -33,26 +32,25 @@ object App {
     print(options)
 
     val conf = new SparkConf()
-      .set("spark.cassandra.connection.host", options.getOrElse("--cassandra-host-ip", default = "localhost"))
-      .set("spark.cassandra.connection.port", options.getOrElse("--cassandra-host-port", default = "9042"))
-      .setMaster(options.getOrElse("--spark-master", default = "local[2]"))
+      .setMaster("local[1]")
       .setAppName("my-poc-app")
 
     val session = SparkSession.builder
       .config(conf)
       .getOrCreate()
 
-    val schema = loadSchemaFromJson(
-      options.get("--schema-file") match {
+    val csvConfig = getCsvConfig(
+      options.get("--csv-config") match {
         case Some(v) => v
         case None =>
           println("--schema-file is required")
           exit(1)
-      }
-    )
+    })
 
-    println("Schema:")
-    println(schema)
+    val csvSchema = getCsvSchema(csvConfig.mappings)
+
+    println("Csv Schema:")
+    println(csvSchema)
 
     val csvFile = options.get("--csv-file") match {
       case Some(x) => x
@@ -60,38 +58,53 @@ object App {
         println("--csv-file is required")
         exit(1)
     }
-    val df = session.read
-      .option("header", value = options.get("--contains-header").exists(a => a.toBoolean))
-      .schema(schema)
-      .csv(csvFile)
 
+    val df = session.read
+      .option("header", value = csvConfig.has_header)
+      .schema(csvSchema)
+      .csv(csvFile)
+      .repartition(csvConfig.num_partition)
+
+    // show Example row
     df.show(numRows =  5)
 
-    val partition1 = df.rdd.getNumPartitions
-    println(s"Number of partition := $partition1")
+    val numPartition = df.rdd.getNumPartitions
+    println(s"Number of partition := $numPartition")
 
     df.write
-      .cassandraFormat(table = "customer_data", keyspace = "poc")
+      .cassandraFormat(
+        table = csvConfig.to_cass_table,
+        keyspace = csvConfig.to_cass_keyspace)
       .save()
 
     session.stop()
   }
 
-  case class Field(name: String, dataType: String)
-  case class Schema(structure_type: Seq[Field])
-  implicit val seqFieldsRw: ReadWriter[Field] = macroRW
-  implicit val schemaRw: ReadWriter[Schema] = macroRW
+  case class MapField(name: String, dataType: String)
+  case class CsvConfig(
+                        has_header: Boolean,
+                        mappings: Seq[MapField],
+                        to_cass_table: String,
+                        to_cass_keyspace: String,
+                        num_partition: Integer)
 
-  private def loadSchemaFromJson(filePath: String): StructType = {
+  implicit val seqFieldsRw: ReadWriter[MapField] = macroRW
+  implicit val schemaRw: ReadWriter[CsvConfig] = macroRW
 
-    // Read and parse the JSON file
+  private def getCsvConfig(filePath: String): CsvConfig = {
     val src = Source.fromFile(filePath)
-    val schema = read[Schema](src.mkString)
+    val cfg = read[CsvConfig](src.mkString)
     src.close()
+    cfg
+  }
 
+  private def getCsvSchema(mappings: Seq[MapField]): StructType = {
     val structType = StructType(
-      schema.structure_type.map(f => StructField(f.name, f.dataType match {
+        mappings.map(f => StructField(f.name, f.dataType match {
         case "IntegerType" => IntegerType
+        case "BooleanType" => BooleanType
+        case "DateType" => DateType
+        case "DoubleType" => DoubleType
         case _  => StringType
         // Add more
       }, nullable =  false))

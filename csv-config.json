@@ -1,8 +1,12 @@
 {
-  "structure_type": [
+  "has_header": true,
+  "mappings": [
     { "name":  "customerid", "dataType":  "IntegerType" },
     { "name":  "genre", "dataType":  "StringType" },
     { "name":  "annual_income_k", "dataType":  "IntegerType" },
     { "name":  "spending_score", "dataType":  "IntegerType" }
-  ]
+  ],
+  "to_cass_table": "customer_data",
+  "to_cass_keyspace": "poc",
+  "num_partition": 2
 }
