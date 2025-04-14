@@ -1,12 +1,11 @@
+import org.apache.cassandra.io.sstable.CQLSSTableWriter
 import org.apache.spark.SparkConf
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.cassandra.DataFrameWriterWrapper
 import org.apache.spark.sql.types._
-
-import scala.io.Source
-import upickle.default._
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+//import upickle.default._
 
 import scala.annotation.tailrec
+import scala.io.Source
 import scala.sys.exit
 
 object App {
@@ -33,26 +32,12 @@ object App {
     print(options)
 
     val conf = new SparkConf()
-      .set("spark.cassandra.connection.host", options.getOrElse("--cassandra-host-ip", default = "localhost"))
-      .set("spark.cassandra.connection.port", options.getOrElse("--cassandra-host-port", default = "9042"))
-      .setMaster(options.getOrElse("--spark-master", default = "local[2]"))
+      .setMaster(options.getOrElse("--spark-master", default = "local[1]"))
       .setAppName("my-poc-app")
 
     val session = SparkSession.builder
       .config(conf)
       .getOrCreate()
-
-    val schema = loadSchemaFromJson(
-      options.get("--schema-file") match {
-        case Some(v) => v
-        case None =>
-          println("--schema-file is required")
-          exit(1)
-      }
-    )
-
-    println("Schema:")
-    println(schema)
 
     val csvFile = options.get("--csv-file") match {
       case Some(x) => x
@@ -60,6 +45,14 @@ object App {
         println("--csv-file is required")
         exit(1)
     }
+
+    val schema = new StructType()
+      .add("customerid", IntegerType)
+      .add("genre", StringType)
+      .add("age", IntegerType)
+      .add("annual_income_k", IntegerType)
+      .add("spending_score", IntegerType)
+
     val df = session.read
       .option("header", value = options.get("--contains-header").exists(a => a.toBoolean))
       .schema(schema)
@@ -70,33 +63,45 @@ object App {
     val partition1 = df.rdd.getNumPartitions
     println(s"Number of partition := $partition1")
 
-    df.write
-      .cassandraFormat(table = "customer_data", keyspace = "poc")
-      .save()
+    writeSSTable(df)
 
     session.stop()
   }
 
-  case class Field(name: String, dataType: String)
-  case class Schema(structure_type: Seq[Field])
-  implicit val seqFieldsRw: ReadWriter[Field] = macroRW
-  implicit val schemaRw: ReadWriter[Schema] = macroRW
+  private def writeSSTable(df: DataFrame): Unit = {
+    val outputDir = "./sstables"
+    val schema =
+      """
+        |CREATE TABLE poc.customer_data (
+        |    customerid INT PRIMARY KEY,
+        |    genre TEXT,
+        |    age INT,
+        |    annual_income_k INT,
+        |    spending_score INT
+        |);
+      """.stripMargin
+    val insertStatment = "INSERT INTO poc.customer_data (customerid, genre, age, annual_income_k, spending_score) VALUES (?, ?, ?, ?, ?);"
 
-  private def loadSchemaFromJson(filePath: String): StructType = {
+    df.foreachPartition { partition: Iterator[Row] =>
 
-    // Read and parse the JSON file
-    val src = Source.fromFile(filePath)
-    val schema = read[Schema](src.mkString)
-    src.close()
+      val writer = CQLSSTableWriter.builder()
+        .inDirectory(outputDir)
+        .forTable(schema)
+        .withBufferSizeInMB(256)
+        .using(insertStatment)
+        .build()
 
-    val structType = StructType(
-      schema.structure_type.map(f => StructField(f.name, f.dataType match {
-        case "IntegerType" => IntegerType
-        case _  => StringType
-        // Add more
-      }, nullable =  false))
-    )
-    structType
+      partition.foreach { r =>
+        writer.addRow(
+          r.getAs[Integer]("customerid"),
+          r.getAs[String]("genre"),
+          r.getAs[Integer]("age"),
+          r.getAs[Integer]("annual_income_k"),
+          r.getAs[Integer]("spending_score"))
+      }
+
+      writer.close()
+
+    }
   }
-
 }

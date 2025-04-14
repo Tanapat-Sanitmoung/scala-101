@@ -10,13 +10,14 @@ lazy val root = (project in file("."))
 
 val sparkVersion = "2.4.8"
 
-// https://mvnrepository.com/artifact/org.apache.spark/spark-core
-libraryDependencies += "org.apache.spark" %% "spark-core" % sparkVersion
-// https://mvnrepository.com/artifact/org.apache.spark/spark-sql
-libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion % "provided"
-// https://mvnrepository.com/artifact/org.apache.spark/spark-streaming
-libraryDependencies += "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided"
-// https://mvnrepository.com/artifact/com.datastax.spark/spark-cassandra-connector
-libraryDependencies += "com.datastax.spark" %% "spark-cassandra-connector" % "2.4.3"
-// https://mvnrepository.com/artifact/com.lihaoyi/upickle
-libraryDependencies += "com.lihaoyi" %% "upickle" % "4.1.0"
+// Exclude conflicting SLF4J bindings
+libraryDependencies += "org.apache.spark" %% "spark-core" % sparkVersion exclude("org.slf4j", "slf4j-log4j12")
+libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion exclude("org.slf4j", "slf4j-log4j12")
+libraryDependencies += "org.apache.spark" %% "spark-streaming" % sparkVersion exclude("org.slf4j", "slf4j-log4j12")
+//libraryDependencies += "com.datastax.spark" %% "spark-cassandra-connector" % "2.4.3" exclude("ch.qos.logback", "logback-classic")
+//
+//// https://mvnrepository.com/artifact/com.lihaoyi/upickle
+//libraryDependencies += "com.lihaoyi" %% "upickle" % "4.1.0"
+// https://mvnrepository.com/artifact/org.apache.cassandra/cassandra-all
+libraryDependencies += "org.apache.cassandra" % "cassandra-all" % "3.11.19" exclude("com.fasterxml.jackson.core", "jackson-databind")
+
