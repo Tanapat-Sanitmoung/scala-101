@@ -18,3 +18,5 @@ libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion % "provi
 libraryDependencies += "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided"
 // https://mvnrepository.com/artifact/com.datastax.spark/spark-cassandra-connector
 libraryDependencies += "com.datastax.spark" %% "spark-cassandra-connector" % "2.4.3"
+// https://mvnrepository.com/artifact/com.lihaoyi/upickle
+libraryDependencies += "com.lihaoyi" %% "upickle" % "4.1.0"

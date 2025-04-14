@@ -1,0 +1,8 @@
+{
+  "structure_type": [
+    { "name":  "customerid", "dataType":  "IntegerType" },
+    { "name":  "genre", "dataType":  "StringType" },
+    { "name":  "annual_income_k", "dataType":  "IntegerType" },
+    { "name":  "spending_score", "dataType":  "IntegerType" }
+  ]
+}
