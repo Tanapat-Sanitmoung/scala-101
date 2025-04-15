@@ -12,33 +12,27 @@ import scala.sys.exit
 object App {
   def main(args: Array[String]): Unit = {
 
-    @tailrec
-    def mapArgs(map: Map[String, String], list: List[String]) : Map[String, String]
-    = {
-      list match {
-        case Nil => map
-        case (cmd @ ("--csv-file" | "--csv-config"))
-          :: value :: tail => mapArgs(map ++ Map(cmd -> value), tail)
-        case unknown :: _ =>
-          println(s"Unknown command argument := $unknown")
-          exit(1)
-      }
-    }
-
+    // Read command line arguments
     val options = mapArgs(Map(), args.toList)
 
-    // log
+    // print command line arguments
     println("Input options:")
-    print(options)
+    println(options)
 
+    // Set spark config
     val conf = new SparkConf()
       .setMaster("local[1]")
+      .set("spark.eventLog.enabled", "true")
+      .set("spark.eventLog.dir", "./logs")
+      .set("spark.files.maxPartitionBytes", (128 * 1024 * 1024).toString)
       .setAppName("my-poc-app")
 
+    // Create Spark Session
     val session = SparkSession.builder
       .config(conf)
       .getOrCreate()
 
+    // Get required parameter for specify csv file
     val csvConfig = getCsvConfig(
       options.get("--csv-config") match {
         case Some(v) => v
@@ -47,41 +41,62 @@ object App {
           exit(1)
     })
 
+    // Load schema
     val csvSchema = getCsvSchema(csvConfig.mappings)
 
     println("Csv Schema:")
     println(csvSchema)
 
-    val csvFile = options.get("--csv-file") match {
-      case Some(x) => x
-      case None =>
-        println("--csv-file is required")
-        exit(1)
-    }
-
+    // Read CSV file
     val df = session.read
       .option("header", value = csvConfig.has_header)
       .schema(csvSchema)
-      .csv(csvFile)
+      .csv(csvConfig.file_name)
       .repartition(csvConfig.num_partition)
 
-    // show Example row
+    // show sample rows
     df.show(numRows =  5)
 
+    // show number of partition
     val numPartition = df.rdd.getNumPartitions
     println(s"Number of partition := $numPartition")
 
-    df.write
-      .cassandraFormat(
-        table = csvConfig.to_cass_table,
-        keyspace = csvConfig.to_cass_keyspace)
-      .save()
+    // write data to database
+    val notDryRun = options.get("--mode") match {
+      case Some(x) if x == "dry-run" => false
+      case None => true
+    }
+
+    if (notDryRun) {
+      println("write data to cassandra")
+      df.write
+        .cassandraFormat(
+          table = csvConfig.to_cass_table,
+          keyspace = csvConfig.to_cass_keyspace)
+        .save()
+      println("done write data to cassandra")
+    }
 
     session.stop()
+    println("Session stop")
+  }
+
+  @tailrec
+  private def mapArgs(map: Map[String, String], list: List[String]) : Map[String, String]
+  = {
+    list match {
+      case Nil => map
+      case (cmd @ ("--csv-config" | "--mode"))
+        :: value :: tail => mapArgs(map ++ Map(cmd -> value), tail)
+      case unknown :: _ =>
+        println(s"Unknown command argument := $unknown")
+        exit(1)
+    }
   }
 
   case class MapField(name: String, dataType: String)
   case class CsvConfig(
+                        file_name: String,
                         has_header: Boolean,
                         mappings: Seq[MapField],
                         to_cass_table: String,

@@ -1,4 +1,5 @@
 {
+  "file_name" : "Mall_Customers.csv",
   "has_header": true,
   "mappings": [
     { "name":  "customerid", "dataType":  "IntegerType" },
