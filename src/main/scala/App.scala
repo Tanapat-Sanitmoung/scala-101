@@ -25,9 +25,9 @@ object App {
       .set("spark.eventLog.enabled", "true")
       .set("spark.eventLog.dir", "./logs")
       .set("spark.files.maxPartitionBytes", getBytesString(megaBytes =  128))
-      .set("spark.cassandra.connection.config.cloud.path", "hdfs:///some_dir/bundle.zip")
-      .set("spark.cassandra.auth.username", "")
-      .set("spark.cassandra.auth.password", "")
+      // .set("spark.cassandra.connection.config.cloud.path", "hdfs:///some_dir/bundle.zip")
+      // .set("spark.cassandra.auth.username", "")
+      // .set("spark.cassandra.auth.password", "")
       .set("spark.cassandra.connection.host", "localhost")
       .set("spark.cassandra.connection.port", "9042")
       // reference to spark.cassandra configurations
