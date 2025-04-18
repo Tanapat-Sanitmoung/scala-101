@@ -24,13 +24,30 @@ object App {
       .setMaster("local[1]")
       .set("spark.eventLog.enabled", "true")
       .set("spark.eventLog.dir", "./logs")
-      .set("spark.files.maxPartitionBytes", (128 * 1024 * 1024).toString)
+      .set("spark.files.maxPartitionBytes", getBytesString(megaBytes =  128))
+      .set("spark.cassandra.connection.config.cloud.path", "hdfs:///some_dir/bundle.zip")
+      .set("spark.cassandra.auth.username", "")
+      .set("spark.cassandra.auth.password", "")
+      .set("spark.cassandra.connection.host", "localhost")
+      .set("spark.cassandra.connection.port", "9042")
+      // reference to spark.cassandra configurations
+      // https://github.com/apache/cassandra-spark-connector/blob/trunk/doc/reference.md
+      // see : Write Tuning Parameters section
+      .set("spark.cassandra.output.batch.grouping.buffer.size", "1000")
+      .set("spark.cassandra.output.batch.size.bytes", "1024")
+      .set("spark.cassandra.output.concurrent.writes", "5")
+      .set("spark.cassandra.output.ifNotExists", "false")
+      .set("spark.cassandra.output.metrics", "true")
+      .set("spark.cassandra.output.throughputMBPerSec", "None")
+      .set("spark.cassandra.output.ttl", "0")
       .setAppName("my-poc-app")
 
     // Create Spark Session
     val session = SparkSession.builder
       .config(conf)
       .getOrCreate()
+
+    val allCfg = session.sparkContext.getConf.getAll
 
     // Get required parameter for specify csv file
     val csvConfig = getCsvConfig(
@@ -93,6 +110,9 @@ object App {
         exit(1)
     }
   }
+
+  def getBytesString(megaBytes: Int): String = (megaBytes * 1048576).toString
+
 
   case class MapField(name: String, dataType: String)
   case class CsvConfig(
