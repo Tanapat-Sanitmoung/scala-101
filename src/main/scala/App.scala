@@ -47,8 +47,6 @@ object App {
       .config(conf)
       .getOrCreate()
 
-    val allCfg = session.sparkContext.getConf.getAll
-
     // Get required parameter for specify csv file
     val csvConfig = getCsvConfig(
       options.get("--csv-config") match {
@@ -62,21 +60,36 @@ object App {
     val csvSchema = getCsvSchema(csvConfig.mappings)
 
     println("Csv Schema:")
-    println(csvSchema)
+    csvSchema.foreach(println)
 
     // Read CSV file
-    val df = session.read
+    var df = session.read
       .option("header", value = csvConfig.has_header)
+      .option("mode", "PERMISSIVE")
+      .option("dateFormat", "yyyy-MM-dd")
+      .option("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+      .option("nullValue", "")
+      .option("emptyValue", "")
+      .option("nanValue", "NaN")
       .schema(csvSchema)
       .csv(csvConfig.file_name)
-      .repartition(csvConfig.num_partition)
+
+    if (csvConfig.num_partition > 0) {
+      df = df.repartition(csvConfig.num_partition)
+    }
 
     // show sample rows
-    df.show(numRows =  5)
+    if(csvConfig.num_samples > 0)
+    {
+      df.show(numRows =  csvConfig.num_samples)
+    }
 
-    // show number of partition
-    val numPartition = df.rdd.getNumPartitions
-    println(s"Number of partition := $numPartition")
+    if(csvConfig.show_partition)
+    {
+      // show number of partition
+      val numPartition = df.rdd.getNumPartitions
+      println(s"Number of partition := $numPartition")
+    }
 
     // write data to database
     val notDryRun = options.get("--mode") match {
@@ -113,7 +126,6 @@ object App {
 
   def getBytesString(megaBytes: Int): String = (megaBytes * 1048576).toString
 
-
   case class MapField(name: String, dataType: String)
   case class CsvConfig(
                         file_name: String,
@@ -121,7 +133,9 @@ object App {
                         mappings: Seq[MapField],
                         to_cass_table: String,
                         to_cass_keyspace: String,
-                        num_partition: Integer)
+                        num_partition: Integer,
+                        num_samples: Integer,
+                        show_partition: Boolean)
 
   implicit val seqFieldsRw: ReadWriter[MapField] = macroRW
   implicit val schemaRw: ReadWriter[CsvConfig] = macroRW

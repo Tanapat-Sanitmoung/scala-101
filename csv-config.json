@@ -9,5 +9,7 @@
   ],
   "to_cass_table": "customer_data",
   "to_cass_keyspace": "poc",
-  "num_partition": 2
+  "num_partition": 2,
+  "num_samples": 5,
+  "show_partition": true
 }
